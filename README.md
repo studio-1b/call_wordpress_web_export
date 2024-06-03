@@ -1,5 +1,23 @@
+# call_wordpress_web_export
+Hack, to call wordpress, $wp_version = '4.8.1' web export, via curl, to save export file.
+
+## Background
 GoDaddy hosting as of 6/3/2024 uses WP-CLI 2.8.1
 
+wp-cli is a command line utility available to maintain Wordpress.
+  https://developer.wordpress.org/cli/commands/export/
+The command to export all content (except media uploads)
+  wp export
+and then call
+  wp import [file created above] --authors=create
+to copy data to new site
+
+Note: images and video uploaded, are put in wp-content folder, and are not exported.
+You need to find a way to pack these files yourself.  I use
+  tar czf ~/wordpress.tar.gz
+
+
+## Problem being solved:
 I cannot import Wordpress's WXR XML files exported from
   WP-CLI 2.8.1 export from $wp_version = '4.8.1' 
 into 
@@ -23,7 +41,7 @@ Error: Cannot create a user with an empty login name.
 Then try getting the export from the web UI, via Tools > Export.  And if that export file can be
 imported using wp-cli, then you can use this script to automate your export process:
 
-  get_wordpress_export_from_web.sh [wordpress_user_who_can_export]
+  get_wordpress_export_from_web.sh [wordpress url do not end in /] [wordpress_user_who_can_export]
 
 you just also need a file named "[same wordpress_user_who_can_export].txt" with the password of this user, in plaintext.
 curl WILL NOT send the password in plaintext.  It will be encrypted via SSL, as any browser will,
@@ -44,5 +62,5 @@ but exports it like
   <wp:author_login>me</wp:author_login>
   <wp:author_email>me@gmail.com</wp:author_email>
 
-This might not be the problem, since 2.10 can import, the same file it exported.
+This might not be the problem, since 2.10 can import, the same file it exported.  And it does the same thing
 

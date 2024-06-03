@@ -1,12 +1,30 @@
 #/bin/bash
 
-WP_USERNAME=$1
+WP_URL=$1
+if [ "$WP_URL" == "" ]; then
+  echo "USAGE: get_wordpress_export_from_web.sh [wordpress url] [wordpress username]"
+  exit 1
+fi
+curl $WP_URL &> /dev/null
+if [ $? -ne 0 ]; then
+  echo "ERROR: unable to connect to: $WP_URL"
+  echo "did you enter it correctly?"
+  exit 2
+fi
+curl $WP_URL/wp-login.php &> /dev/null
+if [ $? -ne 0 ]; then
+  echo "ERROR: Cannect find login page: $WP_URL"
+  echo "is the admin pages installed"
+  exit 2
+fi
+
+WP_USERNAME=$2
 if [ "$WP_USERNAME" == "" ]; then
-  echo "USAGE: get_wordpress_export_from_web.sh [wordpress username]"
+  echo "USAGE: get_wordpress_export_from_web.sh [wordpress url] [wordpress username]"
   exit 1
 fi
 if [ ! -f "$WP_USERNAME.txt" ]; then
-  echo "USAGE: get_wordpress_export_from_web.sh [wordpress username]"
+  echo "USAGE: get_wordpress_export_from_web.sh [wordpress url] [wordpress username]"
   echo "       [wordpress username].txt must exist"
   echo "                                and it contains password"
   exit 2
@@ -57,8 +75,8 @@ WP_PASSWORD=$(<$WP_USERNAME.txt)
 #* Connection #0 to host www.tictawf.com left intact
 #* Closing connection #0
 
-curl -v -X POST https://www.tictawf.com/blog/wp-login.php -H "Content-Type: application/x-www-form-urlencoded" -d "log=$WP_USERNAME&pwd=$WP_PASSWORD&wp-submit=Log+In&redirect_to=https%3A%2F%2Fwww.tictawf.com%2Fblog%2Fwp-admin%2F&testcookie=1"  --cookie "wordpress_test_cookie=WP+Cookie+check" &> ~/get_wordpress_export_from_web.tmp
-grep '< Location: https://www.tictawf.com/blog/wp-admin/' get_wordpress_export_from_web.tmp > /dev/null
+curl -v -X POST $WP_URL/wp-login.php -H "Content-Type: application/x-www-form-urlencoded" -d "log=$WP_USERNAME&pwd=$WP_PASSWORD&wp-submit=Log+In&redirect_to=https%3A%2F%2Fwww.tictawf.com%2Fblog%2Fwp-admin%2F&testcookie=1"  --cookie "wordpress_test_cookie=WP+Cookie+check" &> get_wordpress_export_from_web.tmp
+grep -i "< Location: $WP_URL/wp-admin/" get_wordpress_export_from_web.tmp > /dev/null
 if [ $? -ne 0 ]; then
   echo "Error!  Login to wordpress website failed"
   echo "see get_wordpress_export_from_web.tmp for details"
@@ -66,7 +84,7 @@ if [ $? -ne 0 ]; then
   exit 3
 fi
 
-grep '< Set-Cookie: ' get_wordpress_export_from_web.tmp > /dev/null
+grep -i '< Set-Cookie: ' get_wordpress_export_from_web.tmp > /dev/null
 if [ $? -ne 0 ]; then
   echo "Error! Cannot find login cookie"
   echo "see get_wordpress_export_from_web.tmp for details"
@@ -74,10 +92,10 @@ if [ $? -ne 0 ]; then
   exit 4
 fi
 
-WP_COOKIE=$(grep '< Set-Cookie: ' get_wordpress_export_from_web.tmp | cut -d';' -f1 | cut -c15- | tr '\n' ';')
-curl -v 'https://www.tictawf.com/blog/wp-admin/export.php?download=true&content=all&cat=0&post_author=0&post_start_date=0&post_end_date=0&post_status=0&page_author=0&page_start_date=0&page_end_date=0&page_status=0&attachment_start_date=0&attachment_end_date=0&fl-builder-template-export-select=all&submit=Download+Export+File' --cookie "$WP_COOKIE" -o wordpress.$WP_USERNAME.xml 2>&1 | grep '< Content-Disposition: attachment; filename='
+WP_COOKIE=$(grep -i '< Set-Cookie: ' get_wordpress_export_from_web.tmp | cut -d';' -f1 | cut -c15- | tr '\n' ';')
+curl -v $WP_URL'/wp-admin/export.php?download=true&content=all&cat=0&post_author=0&post_start_date=0&post_end_date=0&post_status=0&page_author=0&page_start_date=0&page_end_date=0&page_status=0&attachment_start_date=0&attachment_end_date=0&fl-builder-template-export-select=all&submit=Download+Export+File' --cookie "$WP_COOKIE" -o wordpress.$WP_USERNAME.xml 2>&1 | grep -i '< Content-Disposition: attachment; filename='
 if [ $? -ne 0 ]; then
-  echo "ERROR!  the download reported error.  Please look at above output for clues"
+  echo "ERROR!  the download reported error $?.  Please look at above output for clues"
   exit 5
 fi
 if [ ! -f "wordpress.$WP_USERNAME.xml" ]; then
